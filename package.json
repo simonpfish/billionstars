@@ -1,0 +1,19 @@
+{
+  "name": "billionstars",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@types/papaparse": "^4.5.9",
+    "@types/three": "^0.93.30",
+    "axios": "^0.18.0",
+    "papaparse": "^4.6.3",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6",
+    "react-three-fiber": "^2.0.4",
+    "three": "^0.103.0"
+  },
+  "devDependencies": {
+    "typescript": "^3.4.2"
+  }
+}
