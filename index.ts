@@ -1,8 +1,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-
-// @ts-ignore
-import StarTexture from './textures/star.png'
+import { interpolateRdBu } from 'd3-scale-chromatic'
 
 const { renderer, scene, camera, controls } = init()
 fetchGaiaData().then(data => addStars(data))
@@ -58,13 +56,14 @@ function fetchGaiaData() {
   // Table info: https://gea.esac.esa.int/archive/documentation/GDR2/Gaia_archive/chap_datamodel/sec_dm_main_tables/ssec_dm_gaia_source.html
   // Table info: https://gea.esac.esa.int/archive/documentation/GDR2/Catalogue_consolidation/chap_cu9gat/sec_cu9gat_intro/
 
-  return fetch('http://gea.esac.esa.int/tap-server/tap/sync', {
+  return fetch('https://cors-anywhere.herokuapp.com/http://gea.esac.esa.int/tap-server/tap/sync', {
     method: 'POST',
     mode: 'cors',
-    cache: 'no-cache',
+    cache: 'force-cache',
     credentials: 'same-origin',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-Content-Type-Options': 'nosniff'
     },
     redirect: 'follow',
     referrer: 'no-referrer',
@@ -95,7 +94,12 @@ function processGaiaData(data) {
   const y = dist * Math.cos(dec) * Math.sin(ra)
   const z = dist * Math.sin(dec)
 
-  const [r, g, b] = [map(btor, 0, 3, 0, 1), 0.5, map(btor, 0, 3, 1, 0)]
+  const rgb = interpolateRdBu(map(btor, 0.2, 3, 0.2, 1))
+  const [r, g, b] = rgb
+    .substring(4, rgb.length - 1)
+    .replace(/ /g, '')
+    .split(',')
+    .map(x => map(parseInt(x), 0, 255, 0.2, 1))
 
   return [x, y, z, r, g, b]
 }
@@ -116,18 +120,39 @@ function addStars(data) {
 
   geometry.addAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
   geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-  var texture = new THREE.TextureLoader().load(StarTexture)
 
   const material = new THREE.PointsMaterial({
     size: 10,
     vertexColors: THREE.VertexColors,
-    // transparent: true,
-    // blending: THREE.AdditiveBlending,
-    // map: texture,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    map: createCanvasCircleMaterial(256),
     depthTest: false
   })
 
   const points = new THREE.Points(geometry, material)
 
   scene.add(points)
+}
+
+function createCanvasCircleMaterial(size) {
+  var matCanvas = document.createElement('canvas')
+  matCanvas.width = matCanvas.height = size
+  var ctx = matCanvas.getContext('2d')
+  // create exture object from canvas.
+  var texture = new THREE.Texture(matCanvas)
+  // Draw a circle
+  var radgrad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+
+  radgrad.addColorStop(0, 'rgba(255,255,255,1)')
+  radgrad.addColorStop(0.3, 'rgba(255,255,255,1)')
+  radgrad.addColorStop(1, 'rgba(255,255,255,0.0)')
+
+  // draw shape
+  ctx.fillStyle = radgrad
+  ctx.fillRect(0, 0, size, size)
+  // need to set needsUpdate
+  texture.needsUpdate = true
+  // return a texture made from the canvas
+  return texture
 }
