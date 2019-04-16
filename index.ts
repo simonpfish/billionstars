@@ -1,19 +1,35 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import Stats from 'stats-js'
-
+import LocalForage from 'localforage'
 import { interpolateRdBu } from 'd3-scale-chromatic'
 import fetch from 'fetch-retry'
 
 const { renderer, scene, camera, controls } = init()
 
 const stats = new Stats()
-let totalStarCount = 0
+
+let stars = []
+
+LocalForage.getItem('stars')
+  .then((value: Array<any>) => {
+    if (value != null) {
+      stars = value
+      addStars(stars)
+      console.log(`Loaded ${stars.length} stars from local cache`)
+    }
+    spawnFetchThreads(1, 10000, stars.length)
+  })
+  .catch(reason => {
+    console.error(`Error using local storage: ${reason}`)
+    spawnFetchThreads(1, 10000, stars.length)
+  })
+
 const starPanel = stats.addPanel(new Stats.Panel('Stars', '#ff8', '#221'))
-stats.showPanel(2)
+stats.showPanel(3)
+setInterval(() => starPanel.update(stars.length, 10000000), 1000)
 document.body.appendChild(stats.dom)
 
-spawnFetchThreads(25, 50000)
 animate()
 
 function animate() {
@@ -52,9 +68,9 @@ function init() {
   return { renderer, scene, camera, controls }
 }
 
-function spawnFetchThreads(numthreads, stepsize) {
+function spawnFetchThreads(numthreads, stepsize, initialOffset) {
   for (let i = 0; i < numthreads; i++) {
-    dataLoop(stepsize, i * stepsize, numthreads)
+    dataLoop(stepsize, initialOffset + i * stepsize, numthreads)
   }
 }
 
@@ -62,15 +78,14 @@ function dataLoop(stepsize, start, numthreads) {
   let amount = stepsize
   let offset = start
   const fetchLoop = () =>
-    fetchGaiaData(amount, offset)
-      .then(data => addStars(data))
-      .then(() => {
-        console.log(`Stars fetched: ${offset} - ${offset + amount}`)
-        totalStarCount += amount
-        starPanel.update(totalStarCount, 10000000)
-        offset += amount * numthreads
-        if (amount <= 1000000000) fetchLoop()
-      })
+    fetchGaiaData(amount, offset).then(resp => {
+      const data = resp.data.map(processGaiaData)
+      addStars(data)
+      stars = stars.concat(data)
+      LocalForage.setItem('stars', stars)
+      offset += amount * numthreads
+      if (amount <= 1000000000) fetchLoop()
+    })
   fetchLoop()
 }
 
@@ -82,7 +97,7 @@ function fetchGaiaData(amount, offset) {
   params.append(
     'QUERY',
     `select top ${amount}
-    random_index,ra,dec,parallax,bp_rp
+    solution_id,ra,dec,parallax,bp_rp
     from gaiadr2.gaia_source 
     where parallax is not null 
     and ra is not null 
@@ -144,8 +159,8 @@ function addStars(data) {
   const positions = []
   const colors = []
 
-  for (var i = 0; i < data.data.length; i++) {
-    const [x, y, z, r, g, b] = processGaiaData(data.data[i])
+  for (var i = 0; i < data.length; i++) {
+    const [x, y, z, r, g, b] = data[i]
     positions.push(x, y, z)
     colors.push(r, g, b)
   }
