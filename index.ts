@@ -1,10 +1,28 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import Stats from 'stats-js'
+
 import { interpolateRdBu } from 'd3-scale-chromatic'
+import fetch from 'fetch-retry'
 
 const { renderer, scene, camera, controls } = init()
-fetchGaiaData().then(data => addStars(data))
+
+const stats = new Stats()
+let totalStarCount = 0
+const starPanel = stats.addPanel(new Stats.Panel('Stars', '#ff8', '#221'))
+stats.showPanel(2)
+document.body.appendChild(stats.dom)
+
+spawnFetchThreads(25, 50000)
 animate()
+
+function animate() {
+  stats.begin()
+  controls.update()
+  renderer.render(scene, camera)
+  stats.end()
+  requestAnimationFrame(animate)
+}
 
 function init() {
   const camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 5, 1000000)
@@ -13,8 +31,6 @@ function init() {
   const controls = new OrbitControls(camera)
 
   const scene = new THREE.Scene()
-
-  const light = new THREE.AmbientLight(0xffffff, 100) // soft white light
 
   const renderer = new THREE.WebGLRenderer()
   renderer.setPixelRatio(window.devicePixelRatio)
@@ -36,21 +52,44 @@ function init() {
   return { renderer, scene, camera, controls }
 }
 
-function fetchGaiaData() {
+function spawnFetchThreads(numthreads, stepsize) {
+  for (let i = 0; i < numthreads; i++) {
+    dataLoop(stepsize, i * stepsize, numthreads)
+  }
+}
+
+function dataLoop(stepsize, start, numthreads) {
+  let amount = stepsize
+  let offset = start
+  const fetchLoop = () =>
+    fetchGaiaData(amount, offset)
+      .then(data => addStars(data))
+      .then(() => {
+        console.log(`Stars fetched: ${offset} - ${offset + amount}`)
+        totalStarCount += amount
+        starPanel.update(totalStarCount, 10000000)
+        offset += amount * numthreads
+        if (amount <= 1000000000) fetchLoop()
+      })
+  fetchLoop()
+}
+
+function fetchGaiaData(amount, offset) {
   const params = new URLSearchParams()
   params.append('LANG', 'ADQL')
   params.append('REQUEST', 'doQuery')
   params.append('FORMAT', 'json')
   params.append(
     'QUERY',
-    `select top 100000
+    `select top ${amount}
     random_index,ra,dec,parallax,bp_rp
     from gaiadr2.gaia_source 
     where parallax is not null 
     and ra is not null 
     and dec is not null 
     and bp_rp is not null 
-    order by random_index`
+    order by parallax
+    offset ${offset};`
   )
 
   // Table info: https://gea.esac.esa.int/archive/documentation/GDR2/Gaia_archive/chap_datamodel/sec_dm_main_tables/ssec_dm_gaia_source.html
@@ -59,6 +98,8 @@ function fetchGaiaData() {
   return fetch('https://cors-anywhere.herokuapp.com/http://gea.esac.esa.int/tap-server/tap/sync', {
     method: 'POST',
     mode: 'cors',
+    retries: 3,
+    retryDelay: 1000,
     cache: 'force-cache',
     credentials: 'same-origin',
     headers: {
@@ -71,18 +112,12 @@ function fetchGaiaData() {
   }).then(response => response.json())
 }
 
-function animate() {
-  requestAnimationFrame(animate)
-  controls.update()
-  renderer.render(scene, camera)
-}
-
 function map(x, in_min, in_max, out_min, out_max) {
   return ((x - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min
 }
 
 function processGaiaData(data) {
-  const scale = 500.0
+  const scale = 20000.0
 
   const ra = parseFloat(data[1]) * (Math.PI / 180.0)
   const dec = parseFloat(data[2]) * (Math.PI / 180.0)
@@ -105,12 +140,9 @@ function processGaiaData(data) {
 }
 
 function addStars(data) {
-  console.log('rendering particles')
   const geometry = new THREE.BufferGeometry()
   const positions = []
   const colors = []
-
-  console.log(data)
 
   for (var i = 0; i < data.data.length; i++) {
     const [x, y, z, r, g, b] = processGaiaData(data.data[i])
@@ -122,10 +154,10 @@ function addStars(data) {
   geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
 
   const material = new THREE.PointsMaterial({
-    size: 10,
+    size: 5,
     vertexColors: THREE.VertexColors,
     transparent: true,
-    blending: THREE.AdditiveBlending,
+    // blending: THREE.AdditiveBlending,
     map: createCanvasCircleMaterial(256),
     depthTest: false
   })
@@ -145,7 +177,7 @@ function createCanvasCircleMaterial(size) {
   var radgrad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
 
   radgrad.addColorStop(0, 'rgba(255,255,255,1)')
-  radgrad.addColorStop(0.3, 'rgba(255,255,255,1)')
+  radgrad.addColorStop(0.4, 'rgba(255,255,255,1)')
   radgrad.addColorStop(1, 'rgba(255,255,255,0.0)')
 
   // draw shape
