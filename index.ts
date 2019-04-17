@@ -5,8 +5,23 @@ import localForage from 'localforage'
 import { interpolateRdBu } from 'd3-scale-chromatic'
 import fetch from 'fetch-retry'
 import uuid from 'uuid'
+import dat from 'dat.gui'
 
 const { renderer, scene, camera, controls } = init()
+
+const settings = {
+  'Clear cache': () => {
+    localForage
+      .keys()
+      .then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
+      .then(() => alert('Cleared cache'))
+  },
+  'Max stars': 1000000
+}
+
+const gui = new dat.GUI({ width: 300 })
+gui.add(settings, 'Clear cache')
+gui.add(settings, 'Max stars', 0, 10000000)
 
 let starCount = 0 // updated on every call to addStars()
 
@@ -71,6 +86,8 @@ function loadCache() {
 }
 
 function fetchStars(numThreads, stepSize, offset) {
+  if (starCount <= settings['Max number of stars']) return
+
   let fetchPromises = []
   for (let i = 0; i < numThreads; i++) {
     fetchPromises.push(fetchGaiaData(stepSize, offset + stepSize * i))
@@ -80,16 +97,14 @@ function fetchStars(numThreads, stepSize, offset) {
       localForage.setItem(uuid(), data)
     })
 
-    if (starCount <= 1000000000) {
-      const newOffset = offset + stepSize * numThreads
-      if (stepSize < 25000 && offset >= 500000) {
-        stepSize = 25000
-      }
-      if (stepSize < 50000 && offset >= 1000000) {
-        stepSize = 50000
-      }
-      fetchStars(numThreads, stepSize, newOffset)
+    const newOffset = offset + stepSize * numThreads
+    if (stepSize < 25000 && offset >= 500000) {
+      stepSize = 25000
     }
+    if (stepSize < 50000 && offset >= 1000000) {
+      stepSize = 50000
+    }
+    fetchStars(numThreads, stepSize, newOffset)
   })
 }
 
@@ -181,7 +196,7 @@ function addStars(data) {
   geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
 
   const material = new THREE.PointsMaterial({
-    size: 1,
+    size: 0.5,
     vertexColors: THREE.VertexColors,
     transparent: true,
     // blending: THREE.AdditiveBlending,
