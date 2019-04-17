@@ -1,34 +1,22 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import Stats from 'stats-js'
-import LocalForage from 'localforage'
+import localForage from 'localforage'
 import { interpolateRdBu } from 'd3-scale-chromatic'
 import fetch from 'fetch-retry'
+import uuid from 'uuid'
 
 const { renderer, scene, camera, controls } = init()
 
+let starCount = 0 // updated on every call to addStars()
+
 const stats = new Stats()
-
-let stars = []
-
-LocalForage.getItem('stars')
-  .then((value: Array<any>) => {
-    if (value != null) {
-      stars = value
-      addStars(stars)
-      console.log(`Loaded ${stars.length} stars from local cache`)
-    }
-    spawnFetchThreads(1, 10000, stars.length)
-  })
-  .catch(reason => {
-    console.error(`Error using local storage: ${reason}`)
-    spawnFetchThreads(1, 10000, stars.length)
-  })
-
 const starPanel = stats.addPanel(new Stats.Panel('Stars', '#ff8', '#221'))
 stats.showPanel(3)
-setInterval(() => starPanel.update(stars.length, 10000000), 1000)
+setInterval(() => starPanel.update(starCount, 10000000), 1000)
 document.body.appendChild(stats.dom)
+
+loadCache().then(() => fetchStars(10, 5000, starCount))
 
 animate()
 
@@ -68,25 +56,43 @@ function init() {
   return { renderer, scene, camera, controls }
 }
 
-function spawnFetchThreads(numthreads, stepsize, initialOffset) {
-  for (let i = 0; i < numthreads; i++) {
-    dataLoop(stepsize, initialOffset + i * stepsize, numthreads)
-  }
+localForage.keys().then(keys => keys.forEach(key => localForage.removeItem(key)))
+
+function loadCache() {
+  return localForage
+    .keys()
+    .then(keys =>
+      Promise.all(keys.map(key => localForage.getItem(key).then(data => addStars(data))))
+    )
+    .then(() => {
+      console.log(`Loaded ${starCount} stars from local cache`)
+    })
+    .catch(reason => {
+      console.error(`Error using local storage: ${reason}`)
+    })
 }
 
-function dataLoop(stepsize, start, numthreads) {
-  let amount = stepsize
-  let offset = start
-  const fetchLoop = () =>
-    fetchGaiaData(amount, offset).then(resp => {
-      const data = resp.data.map(processGaiaData)
-      addStars(data)
-      stars = stars.concat(data)
-      LocalForage.setItem('stars', stars)
-      offset += amount * numthreads
-      if (amount <= 1000000000) fetchLoop()
+function fetchStars(numThreads, stepSize, offset) {
+  let fetchPromises = []
+  for (let i = 0; i < numThreads; i++) {
+    fetchPromises.push(fetchGaiaData(stepSize, offset + stepSize * i))
+  }
+  Promise.all(fetchPromises).then(values => {
+    values.forEach(data => {
+      localForage.setItem(uuid(), data)
     })
-  fetchLoop()
+
+    if (starCount <= 1000000000) {
+      const newOffset = offset + stepSize * numThreads
+      if (stepSize < 25000 && offset >= 500000) {
+        stepSize = 25000
+      }
+      if (stepSize < 50000 && offset >= 1000000) {
+        stepSize = 50000
+      }
+      fetchStars(numThreads, stepSize, newOffset)
+    }
+  })
 }
 
 function fetchGaiaData(amount, offset) {
@@ -103,6 +109,7 @@ function fetchGaiaData(amount, offset) {
     and ra is not null 
     and dec is not null 
     and bp_rp is not null 
+
     order by parallax
     offset ${offset};`
   )
@@ -124,7 +131,13 @@ function fetchGaiaData(amount, offset) {
     redirect: 'follow',
     referrer: 'no-referrer',
     body: params.toString()
-  }).then(response => response.json())
+  })
+    .then(response => response.json())
+    .then(object => {
+      const data = object.data.map(processGaiaData)
+      addStars(data)
+      return data
+    })
 }
 
 function map(x, in_min, in_max, out_min, out_max) {
@@ -132,12 +145,12 @@ function map(x, in_min, in_max, out_min, out_max) {
 }
 
 function processGaiaData(data) {
-  const scale = 20000.0
+  const scale = 1.0
 
   const ra = parseFloat(data[1]) * (Math.PI / 180.0)
   const dec = parseFloat(data[2]) * (Math.PI / 180.0)
   const parallax = parseFloat(data[3])
-  const dist = (1 / parallax) * scale
+  const dist = (1 / (parallax / 1000.0)) * scale
   const btor = parseFloat(data[4])
 
   const x = dist * Math.cos(dec) * Math.cos(ra)
@@ -155,6 +168,7 @@ function processGaiaData(data) {
 }
 
 function addStars(data) {
+  starCount += data.length
   const geometry = new THREE.BufferGeometry()
   const positions = []
   const colors = []
@@ -169,7 +183,7 @@ function addStars(data) {
   geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
 
   const material = new THREE.PointsMaterial({
-    size: 5,
+    size: 1,
     vertexColors: THREE.VertexColors,
     transparent: true,
     // blending: THREE.AdditiveBlending,
