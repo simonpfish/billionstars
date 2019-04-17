@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import FlyControls from 'three.fly'
 import Stats from 'stats-js'
 import localForage from 'localforage'
 import { interpolateRdBu } from 'd3-scale-chromatic'
@@ -77,7 +78,7 @@ function clearStars() {
 
 function animate() {
   stats.begin()
-  // controls.update()
+  controls.update(1)
   renderer.render(scene, camera)
   stats.end()
   requestAnimationFrame(animate)
@@ -87,9 +88,10 @@ function init() {
   const container = document.getElementById('container')
 
   const camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 5, 1000000)
-  camera.position.z = 2750
+  camera.position.z = 500
 
-  const controls = new OrbitControls(camera, container)
+  // const controls = new OrbitControls(camera, container)
+  const controls = new FlyControls(camera, container, THREE)
 
   const scene = new THREE.Scene()
 
