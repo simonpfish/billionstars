@@ -9,19 +9,47 @@ import dat from 'dat.gui'
 
 const { renderer, scene, camera, controls } = init()
 
+let cancelFetch = false
 const settings = {
   'Clear cache': () => {
-    localForage
-      .keys()
-      .then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
-      .then(() => alert('Cleared cache'))
+    cancelFetch = true
+    return fetchProcess.then(() =>
+      localForage
+        .keys()
+        .then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
+        .then(() => {
+          clearStars()
+
+          restartFetch()
+        })
+    )
   },
-  'Max stars': 1000000
+  'Max stars': 1000000,
+  'Fetch order': 'parallax desc'
 }
 
 const gui = new dat.GUI({ width: 300 })
 gui.add(settings, 'Clear cache')
-gui.add(settings, 'Max stars', 0, 10000000)
+gui.add(settings, 'Max stars', 0, 10000000).onFinishChange(() => {
+  cancelFetch = true
+  if (fetchProcess == null) restartFetch()
+  else
+    fetchProcess.then(() => {
+      restartFetch()
+    })
+}) // on change re-trigger star fetch
+gui.add(settings, 'Fetch order', ['parallax desc', 'random_index']).onFinishChange(value => {
+  cancelFetch = true
+  if (fetchProcess == null) restartFetch()
+  else
+    fetchProcess
+      // .then(() => localForage.keys())
+      // .then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
+      .then(() => {
+        // clearStars()
+        restartFetch()
+      })
+})
 
 let starCount = 0 // updated on every call to addStars()
 
@@ -31,23 +59,37 @@ stats.showPanel(3)
 setInterval(() => starPanel.update(starCount, 10000000), 1000)
 document.body.appendChild(stats.dom)
 
-loadCache().then(() => fetchStars(10, 5000, starCount))
+let fetchProcess = loadCache().then(() => fetchStars(10, 5000, starCount))
 
 animate()
 
+function restartFetch() {
+  cancelFetch = false
+  fetchProcess = fetchStars(10, 5000, starCount)
+}
+
+function clearStars() {
+  starCount = 0
+  while (scene.children.length > 0) {
+    scene.remove(scene.children[0])
+  }
+}
+
 function animate() {
   stats.begin()
-  controls.update()
+  // controls.update()
   renderer.render(scene, camera)
   stats.end()
   requestAnimationFrame(animate)
 }
 
 function init() {
+  const container = document.getElementById('container')
+
   const camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 5, 1000000)
   camera.position.z = 2750
 
-  const controls = new OrbitControls(camera)
+  const controls = new OrbitControls(camera, container)
 
   const scene = new THREE.Scene()
 
@@ -55,7 +97,6 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(window.innerWidth, window.innerHeight)
 
-  const container = document.getElementById('container')
   container.appendChild(renderer.domElement)
 
   window.addEventListener(
@@ -86,13 +127,13 @@ function loadCache() {
 }
 
 function fetchStars(numThreads, stepSize, offset) {
-  if (starCount <= settings['Max number of stars']) return
+  if (starCount >= settings['Max stars'] || cancelFetch) return
 
   let fetchPromises = []
   for (let i = 0; i < numThreads; i++) {
     fetchPromises.push(fetchGaiaData(stepSize, offset + stepSize * i))
   }
-  Promise.all(fetchPromises).then(values => {
+  return Promise.all(fetchPromises).then(values => {
     values.forEach(data => {
       localForage.setItem(uuid(), data)
     })
@@ -104,7 +145,7 @@ function fetchStars(numThreads, stepSize, offset) {
     if (stepSize < 50000 && offset >= 1000000) {
       stepSize = 50000
     }
-    fetchStars(numThreads, stepSize, newOffset)
+    return fetchStars(numThreads, stepSize, newOffset)
   })
 }
 
@@ -116,14 +157,17 @@ function fetchGaiaData(amount, offset) {
   params.append(
     'QUERY',
     `select top ${amount}
-    solution_id,ra,dec,parallax,bp_rp
+    random_index,ra,dec,parallax,bp_rp,parallax_error,ra_error,dec_error
     from gaiadr2.gaia_source 
-    where parallax is not null 
+    where parallax is not null
+    and parallax >= 0 
+    and parallax / parallax_error >= 4
+    and ra_error <= 4
+    and dec_error <= 4
     and ra is not null 
     and dec is not null 
     and bp_rp is not null 
-
-    order by parallax
+    order by ${settings['Fetch order']} 
     offset ${offset};`
   )
 
