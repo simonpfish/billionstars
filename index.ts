@@ -56,8 +56,6 @@ function init() {
   return { renderer, scene, camera, controls }
 }
 
-localForage.keys().then(keys => keys.forEach(key => localForage.removeItem(key)))
-
 function loadCache() {
   return localForage
     .keys()
