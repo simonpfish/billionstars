@@ -14,16 +14,22 @@ let cancelFetch = false
 const settings = {
   'Clear cache': () => {
     cancelFetch = true
-    return fetchProcess.then(() =>
-      localForage
+    if (fetchProcess == null)
+      return localForage
         .keys()
         .then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
-        .then(() => {
-          clearStars()
+        .then(restartFetch)
+    else
+      return fetchProcess.then(() =>
+        localForage
+          .keys()
+          .then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
+          .then(() => {
+            clearStars()
 
-          restartFetch()
-        })
-    )
+            restartFetch()
+          })
+      )
   },
   'Max stars': 1000000,
   'Fetch order': 'parallax desc'
