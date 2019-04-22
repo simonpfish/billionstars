@@ -7,6 +7,8 @@ import { interpolateRdBu } from 'd3-scale-chromatic'
 import fetch from 'fetch-retry'
 import uuid from 'uuid'
 import dat from 'dat.gui'
+import { PolarGridHelper } from 'three'
+import { LineSegments } from 'three'
 
 let cancelFetch = false
 const settings = {
@@ -30,6 +32,7 @@ const settings = {
       )
   },
   'Max stars': 1000000,
+  'Max parallax error': 0.01,
   'Fetch order': 'parallax desc',
   'Control mode': 'orbit'
 }
@@ -44,6 +47,7 @@ gui.add(settings, 'Max stars', 0, 10000000).onFinishChange(() => {
       restartFetch()
     })
 }) // on change re-trigger star fetch
+gui.add(settings, 'Max parallax error', 0, 1)
 gui.add(settings, 'Fetch order', ['parallax desc', 'random_index']).onFinishChange(value => {
   cancelFetch = true
   if (fetchProcess == null) restartFetch()
@@ -142,6 +146,23 @@ function init() {
     false
   )
 
+  var radius = 1000
+  var radials = 24
+  var circles = 20
+  var divisions = 100
+
+  // @ts-ignore
+  var helper: LineSegments = new PolarGridHelper(
+    radius,
+    radials,
+    circles,
+    divisions,
+    0x444444,
+    0x888888
+  )
+
+  scene.add(helper)
+
   return { renderer, scene, camera, controls }
 }
 
@@ -175,9 +196,9 @@ function fetchStars(numThreads, stepSize, offset) {
     if (stepSize < 25000 && offset >= 500000) {
       stepSize = 25000
     }
-    if (stepSize < 50000 && offset >= 1000000) {
-      stepSize = 50000
-    }
+    // if (stepSize < 50000 && offset >= 1000000) {
+    //   stepSize = 50000
+    // }
     return fetchStars(numThreads, stepSize, newOffset)
   })
 }
@@ -194,9 +215,7 @@ function fetchGaiaData(amount, offset) {
     from gaiadr2.gaia_source 
     where parallax is not null
     and parallax >= 0 
-    and parallax / parallax_error >= 4
-    and ra_error <= 4
-    and dec_error <= 4
+    and parallax / parallax_error >= ${1.0 / settings['Max parallax error']}
     and ra is not null 
     and dec is not null 
     and bp_rp is not null 
