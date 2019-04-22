@@ -146,14 +146,14 @@ function init() {
     false
   )
 
-  var radius = 1000
-  var radials = 24
-  var circles = 20
+  var radius = 5000 // in parsecs
+  var radials = 8
+  var circles = 10
   var divisions = 100
 
   // @ts-ignore
   var helper: LineSegments = new PolarGridHelper(
-    radius,
+    radius * 0.1,
     radials,
     circles,
     divisions,
@@ -292,7 +292,7 @@ function addStars(data) {
   geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
 
   const material = new THREE.PointsMaterial({
-    size: 0.5,
+    size: 1,
     vertexColors: THREE.VertexColors,
     transparent: true,
     // blending: THREE.AdditiveBlending,
