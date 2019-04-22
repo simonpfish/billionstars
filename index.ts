@@ -8,8 +8,6 @@ import fetch from 'fetch-retry'
 import uuid from 'uuid'
 import dat from 'dat.gui'
 
-const { renderer, scene, camera, controls } = init()
-
 let cancelFetch = false
 const settings = {
   'Clear cache': () => {
@@ -32,7 +30,8 @@ const settings = {
       )
   },
   'Max stars': 1000000,
-  'Fetch order': 'parallax desc'
+  'Fetch order': 'parallax desc',
+  'Control mode': 'orbit'
 }
 
 const gui = new dat.GUI({ width: 300 })
@@ -57,6 +56,18 @@ gui.add(settings, 'Fetch order', ['parallax desc', 'random_index']).onFinishChan
         restartFetch()
       })
 })
+gui.add(settings, 'Control mode', ['orbit', 'fly']).onFinishChange(value => {
+  const container = document.getElementById('container')
+
+  if (value == 'fly') {
+    controls.dispose()
+    controls = new FlyControls(camera, container, THREE)
+    controls.dragToLook = false
+  } else {
+    controls.destroy()
+    controls = new OrbitControls(camera, container)
+  }
+})
 
 let starCount = 0 // updated on every call to addStars()
 
@@ -65,6 +76,8 @@ const starPanel = stats.addPanel(new Stats.Panel('Stars', '#ff8', '#221'))
 stats.showPanel(3)
 setInterval(() => starPanel.update(starCount, 10000000), 1000)
 document.body.appendChild(stats.dom)
+
+let { renderer, scene, camera, controls } = init()
 
 let fetchProcess = loadCache().then(() => fetchStars(10, 5000, starCount))
 
@@ -84,7 +97,13 @@ function clearStars() {
 
 function animate() {
   stats.begin()
-  controls.update(1)
+
+  if (settings['Control mode'] == 'fly') {
+    controls.update(1)
+  } else {
+    controls.update()
+  }
+
   renderer.render(scene, camera)
   stats.end()
   requestAnimationFrame(animate)
@@ -96,8 +115,14 @@ function init() {
   const camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 5, 1000000)
   camera.position.z = 500
 
-  // const controls = new OrbitControls(camera, container)
-  const controls = new FlyControls(camera, container, THREE)
+  let controls
+
+  if (settings['Control mode'] == 'fly') {
+    controls = new FlyControls(camera, container, THREE)
+    controls.dragToLook = false
+  } else {
+    controls = new OrbitControls(camera, container)
+  }
 
   const scene = new THREE.Scene()
 
