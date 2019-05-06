@@ -1,4 +1,11 @@
 import Papa from 'papaparse'
+import processGaiaData from './processGaiaData'
+import { addStars, STARS, STAR_COUNT } from '../scene/stars'
+import { SETTINGS } from '../gui'
+
+// @ts-ignore
+const remote = window.require('electron').remote
+const fs = remote.require('fs')
 
 export function triggerLoad() {
   document.getElementById('fileInput').click()
@@ -6,19 +13,25 @@ export function triggerLoad() {
 
 document.getElementById('fileInput').addEventListener('change', handleFileSelect, false)
 
-let reader = new FileReader()
-reader.onload = e => {
-  let text = reader.result
-  console.log(text)
-  // @ts-ignore
-  let data = Papa.parse(text)
-  console.log(data)
-}
-
 function handleFileSelect(e) {
   const file = this.files[0]
 
-  reader.readAsText(file)
+  Papa.parse(file, {
+    fastMode: true,
+    header: true,
+    chunk: (results, parser) => {
+      let processed = results.data.map(starData => {
+        let { ra, dec, parallax, bp_rp } = starData
+        return processGaiaData(ra, dec, parallax, bp_rp)
+      })
+      addStars(processed)
+      if (STAR_COUNT >= SETTINGS['Max stars to load']) {
+        parser.abort()
+      }
+    },
+    complete: () => {
+      console.log(STARS.length)
+      console.log('done')
+    }
+  })
 }
-
-triggerLoad()

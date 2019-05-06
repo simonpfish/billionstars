@@ -1,13 +1,13 @@
 import { interpolateRdBu } from 'd3-scale-chromatic'
 
-export default data => {
+export default (ra_str, dec_str, p_str, btor_str) => {
   const scale = 1.0
 
-  const ra = parseFloat(data[1]) * (Math.PI / 180.0)
-  const dec = parseFloat(data[2]) * (Math.PI / 180.0)
-  const parallax = parseFloat(data[3])
+  const ra = parseFloat(ra_str) * (Math.PI / 180.0)
+  const dec = parseFloat(dec_str) * (Math.PI / 180.0)
+  const parallax = parseFloat(p_str)
   const dist = (1 / (parallax / 1000.0)) * scale
-  const btor = parseFloat(data[4])
+  const btor = parseFloat(btor_str)
 
   const x = dist * Math.cos(dec) * Math.cos(ra)
   const y = dist * Math.cos(dec) * Math.sin(ra)
