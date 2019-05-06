@@ -1,32 +1,46 @@
 import localForage from 'localforage'
-import { clearStars, STARS } from './scene/stars'
+import { clearStars, STAR_COUNT, STARS, setBlendingMode } from './scene/stars'
 import dat from 'dat.gui'
 import Stats from 'stats-js'
 import { initControls } from './scene/init'
 import { triggerLoad } from './data/loadLocalData'
 
+export const stats = new Stats()
+
 export const SETTINGS = {
-  'Clear cache': () => {
-    localForage.keys().then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
+  'Clear loaded data': () => {
+    clearStars()
   },
-  'Load CSV gaia data file': triggerLoad,
-  'Max stars': 1000000,
-  'Max parallax error': 0.01,
-  'Fetch order': 'parallax desc',
-  'Control mode': 'orbit'
+  'Open CSV file': triggerLoad,
+  'Max stars to load': 10000000,
+  'Star size (pc)': 1,
+  'Control mode': 'orbit',
+  'Star shape': 'orb',
+  'Blending Mode': 'default'
 }
 
 export function initUI() {
   const gui = new dat.GUI({ width: 300 })
-  gui.add(SETTINGS, 'Clear cache')
-  gui.add(SETTINGS, 'Load CSV gaia data file')
-  gui.add(SETTINGS, 'Max stars', 0, 10000000).onFinishChange(() => {
-    // TODO: change the number of rendered stars
-  })
 
-  gui.add(SETTINGS, 'Control mode', ['orbit', 'fly']).onFinishChange(value => initControls(value))
+  var folder1 = gui.addFolder('Load data')
+  folder1.add(SETTINGS, 'Clear loaded data')
+  folder1.add(SETTINGS, 'Open CSV file')
+  folder1.add(SETTINGS, 'Star shape', ['orb', 'square'])
+  folder1.add(SETTINGS, 'Max stars to load', 0, 100000000)
 
-  const stats = new Stats()
+  var folder2 = gui.addFolder('Renderer configuration')
+  folder2.add(SETTINGS, 'Star size (pc)', 0.1, 15).onFinishChange(value =>
+    STARS.forEach(s => {
+      s.material.size = value
+    })
+  )
+  folder2
+    .add(SETTINGS, 'Blending Mode', ['additive', 'default'])
+    .onFinishChange(value => setBlendingMode(value))
+  folder2
+    .add(SETTINGS, 'Control mode', ['orbit', 'fly'])
+    .onFinishChange(value => initControls(value))
+
   addStarCountPanel(stats)
   document.body.appendChild(stats.dom)
 
@@ -36,5 +50,5 @@ export function initUI() {
 function addStarCountPanel(stats: Stats) {
   const starPanel = stats.addPanel(new Stats.Panel('Stars', '#ff8', '#221'))
   stats.showPanel(3)
-  setInterval(() => starPanel.update(STARS.length, 50000000), 1000)
+  setInterval(() => starPanel.update(STAR_COUNT, 50000000), 1000)
 }
