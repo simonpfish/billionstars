@@ -2,6 +2,7 @@ import { renderer, scene, camera, controls, init } from './scene/init'
 import { stats, initUI, SETTINGS } from './gui'
 
 init()
+
 initUI()
 animate()
 

@@ -4,6 +4,7 @@ import dat from 'dat.gui'
 import Stats from 'stats-js'
 import { initControls } from './scene/init'
 import { triggerLoad } from './data/loadLocalData'
+import { toggleGrid } from './scene/grid'
 
 export const stats = new Stats()
 
@@ -16,7 +17,8 @@ export const SETTINGS = {
   'Star size (pc)': 1,
   'Control mode': 'orbit',
   'Star shape': 'orb',
-  'Blending Mode': 'default'
+  'Blending Mode': 'default',
+  'Toggle grid': toggleGrid
 }
 
 export function initUI() {
@@ -29,7 +31,7 @@ export function initUI() {
   folder1.add(SETTINGS, 'Max stars to load', 0, 100000000)
 
   var folder2 = gui.addFolder('Renderer configuration')
-  folder2.add(SETTINGS, 'Star size (pc)', 0.1, 15).onFinishChange(value =>
+  folder2.add(SETTINGS, 'Star size (pc)', 0.1, 30).onFinishChange(value =>
     STARS.forEach(s => {
       s.material.size = value
     })
@@ -40,6 +42,7 @@ export function initUI() {
   folder2
     .add(SETTINGS, 'Control mode', ['orbit', 'fly'])
     .onFinishChange(value => initControls(value))
+  folder2.add(SETTINGS, 'Toggle grid')
 
   addStarCountPanel(stats)
   document.body.appendChild(stats.dom)
