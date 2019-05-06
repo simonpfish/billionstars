@@ -2,7 +2,7 @@ import { init } from './scene/init'
 import { initUI, SETTINGS } from './gui'
 
 let { renderer, scene, camera, controls } = init()
-let { gui, stats } = initUI()
+let { stats } = initUI()
 
 animate()
 

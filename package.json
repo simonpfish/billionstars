@@ -1,35 +1,53 @@
 {
-  "name": "billionstars",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "gaia3d",
+  "version": "1.1.0",
+  "main": "main.js",
   "license": "MIT",
   "scripts": {
-    "start": "parcel index.html"
+    "dev": "parcel ./src/index.html -d build/",
+    "start-dev": "ELECTRON_START_URL=http://localhost:1234 electron .",
+    "start": "electron .",
+    "build": "parcel build ./src/index.html -d build/ --public-url ./",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "gaia.data.viz",
+    "mac": {
+      "category": "public.app-category.education"
+    },
+    "files": [
+      "main.js",
+      "build/*"
+    ]
   },
   "dependencies": {
     "@types/d3-scale-chromatic": "^1.3.1",
     "@types/dat.gui": "^0.7.2",
     "@types/mathjs": "^5.0.1",
     "@types/papaparse": "^4.5.9",
-    "@types/three": "^0.93.30",
     "@types/uuid": "^3.4.4",
     "axios": "^0.18.0",
     "d3-scale-chromatic": "^1.3.3",
     "dat.gui": "^0.7.6",
-    "fetch-retry": "^2.0.0",
+    "fetch-retry": "^2.1.0",
     "localforage": "^1.7.3",
     "mathjs": "^5.9.0",
     "papaparse": "^4.6.3",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
-    "react-three-fiber": "^2.0.4",
-    "stats-js": "^1.0.0",
-    "three": "^0.103.0",
+    "react-three-fiber": "^2.1.0",
+    "stats-js": "^1.0.1",
+    "three": "^0.104.0",
     "three.fly": "^0.1.6",
     "uuid": "^3.3.2"
   },
   "devDependencies": {
+    "electron": "^5.0.1",
+    "electron-builder": "^20.39.0",
+    "electron-reload": "^1.4.0",
     "parcel-bundler": "^1.12.3",
-    "typescript": "^3.4.2"
+    "typescript": "^3.4.5"
   }
 }

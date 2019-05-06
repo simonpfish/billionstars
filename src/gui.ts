@@ -3,11 +3,13 @@ import { clearStars, STARS } from './scene/stars'
 import dat from 'dat.gui'
 import Stats from 'stats-js'
 import { initControls } from './scene/init'
+import { triggerLoad } from './data/loadLocalData'
 
 export const SETTINGS = {
   'Clear cache': () => {
     localForage.keys().then(keys => Promise.all(keys.map(key => localForage.removeItem(key))))
   },
+  'Load CSV gaia data file': triggerLoad,
   'Max stars': 1000000,
   'Max parallax error': 0.01,
   'Fetch order': 'parallax desc',
@@ -17,6 +19,7 @@ export const SETTINGS = {
 export function initUI() {
   const gui = new dat.GUI({ width: 300 })
   gui.add(SETTINGS, 'Clear cache')
+  gui.add(SETTINGS, 'Load CSV gaia data file')
   gui.add(SETTINGS, 'Max stars', 0, 10000000).onFinishChange(() => {
     // TODO: change the number of rendered stars
   })

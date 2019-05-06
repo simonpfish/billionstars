@@ -28,7 +28,7 @@ export function init() {
     false
   )
 
-  controls = initControls('orbit')
+  initControls('orbit')
 
   return { renderer, scene, camera, controls }
 }
