@@ -1,9 +1,8 @@
-import { init } from './scene/init'
-import { initUI, SETTINGS } from './gui'
+import { renderer, scene, camera, controls, init } from './scene/init'
+import { stats, initUI, SETTINGS } from './gui'
 
-let { renderer, scene, camera, controls } = init()
-let { stats } = initUI()
-
+init()
+initUI()
 animate()
 
 function animate() {

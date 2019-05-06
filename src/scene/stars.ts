@@ -1,9 +1,11 @@
 import * as THREE from 'three'
-import { Scene } from 'three'
+import { scene } from '../scene/init'
+import { SETTINGS } from '../gui'
 
 export const STARS = []
+export let STAR_COUNT = 0
 
-export function addStars(data, scene: THREE.Scene, size) {
+export function addStars(data) {
   const geometry = new THREE.BufferGeometry()
   const positions = []
   const colors = []
@@ -18,15 +20,17 @@ export function addStars(data, scene: THREE.Scene, size) {
   geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
 
   const material = new THREE.PointsMaterial({
-    size: size,
+    size: SETTINGS['Star size (pc)'],
     vertexColors: THREE.VertexColors,
     transparent: true,
-    // blending: THREE.AdditiveBlending,
-    map: createCanvasCircleMaterial(256),
+    blending:
+      SETTINGS['Blending Mode'] == 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
+    map: SETTINGS['Star shape'] == 'orb' ? createCanvasCircleMaterial(256) : null,
     depthTest: false
   })
 
   const stars = new THREE.Points(geometry, material)
+  STAR_COUNT += data.length
   STARS.push(stars)
   scene.add(stars)
   return stars
@@ -49,8 +53,16 @@ function createCanvasCircleMaterial(size) {
   return texture
 }
 
-export function clearStars(scene: Scene) {
+export function clearStars() {
   STARS.forEach(star => {
     scene.remove(star)
+  })
+  STAR_COUNT = 0
+}
+
+export function setBlendingMode(blending: 'additive' | 'default') {
+  STARS.forEach(s => {
+    s.material.blending = blending == 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending
+    s.material.needsUpdate = true
   })
 }
