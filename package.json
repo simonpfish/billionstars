@@ -4,10 +4,10 @@
   "main": "main.js",
   "license": "MIT",
   "scripts": {
-    "dev": "parcel ./src/index.html -d build/",
+    "dev": "parcel ./src/index.html -d build/ --bundle-node-modules",
     "start-dev": "ELECTRON_START_URL=http://localhost:1234 electron .",
     "start": "electron .",
-    "build": "parcel build ./src/index.html -d build/ --public-url ./",
+    "build": "parcel build ./src/index.html -d build/ --public-url ./ --bundle-node-modules",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
