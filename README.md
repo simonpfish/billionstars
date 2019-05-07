@@ -8,9 +8,9 @@ To install the app, head over to the [releases](https://github.com/simonpfish/ga
 
 ## Usage
 
-First, you'll need to get yourself some GAIA data in CSV format, including the **ra, dec, parallax and rb_bp** columns.
+First you'll need to download some GAIA data in CSV format, including the **ra, dec, parallax and rb_bp** columns.
 
-To get started quickly, you can download some sample data from [this google drive](https://drive.google.com/open?id=1d0mRIBwnLbS-ZrhcLG5YOZhV7fgrcIVJ).
+To get started quickly, you can download sample data from [this google drive](https://drive.google.com/open?id=1d0mRIBwnLbS-ZrhcLG5YOZhV7fgrcIVJ).
 
 To get custom data, head over to [aia.aip.de/query](https://gaia.aip.de/query/), where you can submit SQL queries to download different subsets of the Gaia data releases. They have great tutorials and examples. A sample query that would download the data corresponding to 10 million stars sorted by parallax would be:
 
@@ -22,7 +22,7 @@ WHERE parallax IS NOT NULL
 ORDER BY parallax DESC;
 ```
 
-Another example query that would download a random sample from would be:
+Another example query that would download a random sample from the dataset would be:
 
 ```sql
 SELECT TOP 10000000
