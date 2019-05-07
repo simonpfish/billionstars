@@ -3,10 +3,6 @@ import processGaiaData from './processGaiaData'
 import { addStars, STARS, STAR_COUNT } from '../scene/stars'
 import { SETTINGS } from '../gui'
 
-// @ts-ignore
-const remote = window.require('electron').remote
-const fs = remote.require('fs')
-
 export function triggerLoad() {
   document.getElementById('fileInput').click()
 }
